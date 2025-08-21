@@ -1,0 +1,46 @@
+# ========================
+# ⚙️ CONFIGURATION
+$RepoUrl = "https://github.com/OctaProjects/Al-Radwan-Company--main.git"
+$Branch = "main"
+# ========================
+
+Write-Output "🔧 Setting remote origin to $RepoUrl ..."
+git remote remove origin 2>$null
+git remote add origin $RepoUrl
+
+Write-Output "🔍 Checking for files larger than 100MB..."
+$largeFiles = Get-ChildItem -Recurse | Where-Object { $_.Length -gt 100MB }
+
+if ($largeFiles) {
+    Write-Output "⚠️ Found large files:"
+    $largeFiles | Select-Object FullName, @{Name="SizeMB";Expression={"{0:N2}" -f ($_.Length/1MB)}} | Format-Table
+
+    $choice = Read-Host "Choose an option (1=Remove, 2=Track with LFS)"
+
+    if ($choice -eq "1") {
+        foreach ($file in $largeFiles) {
+            git rm --cached "$($file.FullName)"
+        }
+        git commit -m "Remove large files >100MB"
+        git push -u origin $Branch
+        Write-Output "✅ Large files removed and pushed."
+    }
+    elseif ($choice -eq "2") {
+        git lfs install
+        foreach ($file in $largeFiles) {
+            $ext = [System.IO.Path]::GetExtension($file.Name).TrimStart('.')
+            git lfs track "*.$ext"
+            git add .gitattributes
+            git add "$($file.FullName)"
+        }
+        git commit -m "Track large files with Git LFS"
+        git push -u origin $Branch
+        Write-Output "✅ Large files tracked with Git LFS and pushed."
+    }
+    else {
+        Write-Output "❌ Invalid choice."
+    }
+}
+else {
+    Write-Output "✅ No files larger than 100MB found."
+}
