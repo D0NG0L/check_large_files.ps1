@@ -1,0 +1,44 @@
+#!/bin/bash
+
+# ========================
+# ⚙️ CONFIGURATION
+REPO_URL="https://github.com/OctaProjects/Al-Radwan-Company--main.git"
+BRANCH="main"
+# ========================
+
+echo "🔍 Checking for files larger than 100MB..."
+find . -type f -size +100M > large_files.txt
+
+if [ -s large_files.txt ]; then
+    echo "⚠️ Found large files:"
+    cat large_files.txt
+    echo ""
+    echo "Choose an option:"
+    echo "1) Remove large files from repo"
+    echo "2) Track them with Git LFS"
+    read -p "Enter 1 or 2: " choice
+
+    if [ "$choice" == "1" ]; then
+        while read file; do
+            git rm --cached "$file"
+        done < large_files.txt
+        git commit -m "Remove large files >100MB"
+        git push -u origin $BRANCH
+        echo "✅ Large files removed and changes pushed."
+    elif [ "$choice" == "2" ]; then
+        git lfs install
+        while read file; do
+            ext="${file##*.}"
+            git lfs track "*.$ext"
+            git add .gitattributes
+            git add "$file"
+        done < large_files.txt
+        git commit -m "Track large files with Git LFS"
+        git push -u origin $BRANCH
+        echo "✅ Large files tracked with Git LFS and pushed."
+    else
+        echo "❌ Invalid choice."
+    fi
+else
+    echo "✅ No files larger than 100MB found."
+fi
